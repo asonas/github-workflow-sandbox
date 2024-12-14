@@ -57,9 +57,9 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/releases/generate-notes)
           release_notes=$(echo "$response" | jq -r '.body')
 
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_ENV
-          echo "$release_notes" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          release_notes_escaped=$(echo "$release_notes" | jq -sR '.')
+
+          echo "RELEASE_NOTES=$release_notes_escaped" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         env:
@@ -74,7 +74,7 @@ jobs:
               "tag_name": "'${{ env.next_tag }}'",
               "target_commitish": "main",
               "name": "'${{ env.next_tag }}'",
-              "body": "'"${RELEASE_NOTES}"'",
+              "body": '"${RELEASE_NOTES}"',
               "draft": false,
               "prerelease": false
             }' \
