@@ -1,0 +1,73 @@
+name: Create Tag and Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-tag-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Get the latest tag
+        id: get-latest-tag
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 || echo "v0.0.0")
+          echo "latest_tag=$latest_tag" >> $GITHUB_ENV
+
+      - name: Calculate next tag
+        id: calculate-next-tag
+        run: |
+          if [[ "${{ env.latest_tag }}" =~ ^v([0-9]{4})\.([0-9]{2})\.([0-9]+)$ ]]; then
+            tag_number=${BASH_REMATCH[3]}
+          else
+            tag_number=0
+          fi
+
+          next_number=$((tag_number + 1))
+          current_year=$(date +"%Y")
+          current_month=$(date +"%m")
+          next_tag="v${current_year}.${current_month}.$next_number"
+
+          echo "next_tag=$next_tag" >> $GITHUB_ENV
+
+      - name: Generate changelog
+        id: generate-changelog
+        run: |
+          latest_tag=${{ env.latest_tag }}
+          next_tag=${{ env.next_tag }}
+
+          if [ "$latest_tag" = "v0.0.0" ]; then
+            changelog=$(git log --oneline --pretty=format:"    - %s by @%an in #%h")
+          else
+            changelog=$(git log ${latest_tag}..HEAD --oneline --pretty=format:"    - %s by @%an in #%h")
+          fi
+
+          echo "changelog=$changelog" >> $GITHUB_ENV
+
+      - name: Create and push tag
+        run: |
+          next_tag=${{ env.next_tag }}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag $next_tag
+          git push origin $next_tag
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.next_tag }}
+          release_name: Release ${{ env.next_tag }}
+          body: |
+            ## What's Changed
+            ${{ env.changelog }}
+
+            ## Full Changelog
+            ${{ env.latest_tag }}...${{ env.next_tag }}
+          draft: false
+          prerelease: false
