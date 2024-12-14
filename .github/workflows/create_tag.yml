@@ -50,8 +50,8 @@ jobs:
       - name: Create and push tag
         run: |
           next_tag=${{ env.next_tag }}
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
 
           git tag $next_tag
           git push origin $next_tag
