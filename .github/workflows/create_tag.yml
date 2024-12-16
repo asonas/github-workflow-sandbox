@@ -117,7 +117,19 @@ jobs:
           LATEST_TAG: latest
           LATEST_COMMIT_SHA: ${{ env.latest_commit_sha }}
         run: |
-          # Create a tag object for 'latest'
+          ref_response=$(curl -s -H "Accept: application/vnd.github+json" \
+                               -H "Authorization: Bearer $GITHUB_TOKEN" \
+                               https://api.github.com/repos/${{ github.repository }}/git/ref/tags/${LATEST_TAG})
+          if echo "$ref_response" | jq -e . >/dev/null 2>&1; then
+            echo "Reference 'refs/tags/latest' exists. Deleting..."
+            # Delete the existing reference
+            delete_response=$(curl -s -X DELETE \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              https://api.github.com/repos/${{ github.repository }}/git/refs/tags/${LATEST_TAG})
+            echo "$delete_response"
+          fi
+
           tag_object_response=$(curl -s -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -132,7 +144,7 @@ jobs:
 
           tag_object_sha=$(echo "$tag_object_response" | jq -r '.sha')
 
-          curl -s -X POST \
+          ref_create_response=$(curl -s -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
@@ -140,4 +152,6 @@ jobs:
               "ref": "refs/tags/'${LATEST_TAG}'",
               "sha": "'${tag_object_sha}'"
             }' \
-            https://api.github.com/repos/${{ github.repository }}/git/refs
+            https://api.github.com/repos/${{ github.repository }}/git/refs)
+
+          echo "$ref_create_response"
