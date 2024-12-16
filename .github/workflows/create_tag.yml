@@ -78,17 +78,8 @@ jobs:
           release_notes_escaped=$(echo "$release_notes" | jq -sR '.')
           echo "RELEASE_NOTES=$release_notes_escaped" >> $GITHUB_ENV
 
-      - name: Create and push latest tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git tag -f latest ${{ env.next_tag }}
-          git push origin latest --force
-
       - name: Create GitHub Release
+        id: create-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
@@ -112,3 +103,41 @@ jobs:
             cat curl_output.txt
             exit 1
           fi
+
+          tag_name="${{ env.next_tag }}"
+          commit_sha=$(curl -s -H "Accept: application/vnd.github+json" \
+                               -H "Authorization: Bearer $GITHUB_TOKEN" \
+                               https://api.github.com/repos/${{ github.repository }}/git/ref/tags/$tag_name \
+                         | jq -r '.object.sha')
+          echo "latest_commit_sha=$commit_sha" >> $GITHUB_ENV
+
+      - name: Create latest tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST_TAG: latest
+          LATEST_COMMIT_SHA: ${{ env.latest_commit_sha }}
+        run: |
+          # Create a tag object for 'latest'
+          tag_object_response=$(curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "tag": "'${LATEST_TAG}'",
+              "message": "This tag points to the latest release",
+              "object": "'${LATEST_COMMIT_SHA}'",
+              "type": "commit"
+            }' \
+            https://api.github.com/repos/${{ github.repository }}/git/tags)
+
+          tag_object_sha=$(echo "$tag_object_response" | jq -r '.sha')
+
+          curl -s -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "ref": "refs/tags/'${LATEST_TAG}'",
+              "sha": "'${tag_object_sha}'"
+            }' \
+            https://api.github.com/repos/${{ github.repository }}/git/refs
