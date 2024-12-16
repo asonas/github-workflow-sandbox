@@ -78,6 +78,16 @@ jobs:
           release_notes_escaped=$(echo "$release_notes" | jq -sR '.')
           echo "RELEASE_NOTES=$release_notes_escaped" >> $GITHUB_ENV
 
+      - name: Create and push latest tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -f latest ${{ env.next_tag }}
+          git push origin latest --force
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
