@@ -165,6 +165,6 @@ jobs:
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
-              "ref": "main"
+              "ref": "'${{ env.next_tag }}'"
             }' \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/hook.yml/dispatches
