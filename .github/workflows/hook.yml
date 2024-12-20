@@ -4,9 +4,7 @@ on:
   push:
     tags:
       - v*.*.*
-  create:
-    tags:
-      - v*.*.*
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -16,4 +14,3 @@ jobs:
     steps:
       - name: echo
         run: "echo Tag name: ${{ github.ref_name }}"
-
