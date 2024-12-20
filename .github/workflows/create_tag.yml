@@ -164,5 +164,7 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer $GITHUB_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{}' \
+            -d '{
+              "ref": "main"
+            }' \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/hook.yml/dispatches
